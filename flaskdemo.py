@@ -8,16 +8,19 @@ app.secret_key = 'IT@JCUA0Zr98j/3yXa R~XHH!jmN]LWX/,?RT'
 
 @app.route('/')
 def home():
+    """Render the home page."""
     return render_template("home.html")
 
 
 @app.route('/about')
 def about():
-    return "I am still working on this"
+    """Render the about page."""
+    return render_template("about.html")
 
 
 @app.route('/search', methods=['POST', 'GET'])
 def search():
+    """Handle the search form and redirect to results."""
     if request.method == 'POST':
         session['search_term'] = request.form['search']
         return redirect(url_for('results'))
@@ -26,28 +29,30 @@ def search():
 
 @app.route('/results')
 def results():
-    search_term = session['search_term']
+    """Render the search results."""
+    search_term = session.get('search_term', '')
+    if not search_term:
+        return redirect(url_for('home'))
     page = get_page(search_term)
     return render_template("results.html", page=page)
 
 
 def get_page(search_term):
+    """Fetch a Wikipedia page."""
     try:
         page = wikipedia.page(search_term)
     except wikipedia.exceptions.PageError:
-        # no such page, return a random one
+        # No such page, return a random one
         page = wikipedia.page(wikipedia.random())
     except wikipedia.exceptions.DisambiguationError:
-        # this is a disambiguation page, get the first real page (close enough)
+        # Handle disambiguation by getting the first related page
         page_titles = wikipedia.search(search_term)
-        # sometimes the next page has the same name (different caps), so don't try the same again
-        if page_titles[1].lower() == page_titles[0].lower():
-            title = page_titles[2]
+        if len(page_titles) > 1 and page_titles[1].lower() != page_titles[0].lower():
+            page = wikipedia.page(page_titles[1])
         else:
-            title = page_titles[1]
-        page = get_page(wikipedia.page(title))
+            page = wikipedia.page(wikipedia.random())
     return page
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
